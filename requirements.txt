@@ -8,3 +8,7 @@ msal
 pyodbc
 gunicorn
 python-dotenv
+Flask-OAuthlib
+pymssql
+requests
+sqlalchemy
