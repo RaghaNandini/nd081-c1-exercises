@@ -296,6 +296,7 @@ def _build_auth_url(authority=None, scopes=None, state=None):
         redirect_uri=url_for("authorized", _external=True)
     )
     '''
+'''
 from flask import Blueprint, redirect, url_for, session, request, render_template
 import msal
 import logging
@@ -382,3 +383,83 @@ def authorized():
 def home():
     user = session.get("user")
     return render_template("home.html", user=user)
+    '''
+    
+from flask import Blueprint, redirect, url_for, session, request, render_template
+import msal
+import logging
+import os
+from FlaskWebProject import db
+from FlaskWebProject.models import User, Post
+from sqlalchemy import text
+
+bp = Blueprint('views', __name__)
+
+# MSAL Configuration
+CLIENT_ID = os.environ.get('CLIENT_ID')
+CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+TENANT_ID = os.environ.get('TENANT_ID')
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+REDIRECT_PATH = "/auth/callback"
+SCOPE = ["User.Read"]  # Adjust if needed
+
+# -------------------
+# Home Route
+# -------------------
+@bp.route("/")
+def home():
+    user = session.get("user")
+    return render_template("home.html", user=user)
+
+# -------------------
+# Login Route
+# -------------------
+@bp.route("/login")
+def login():
+    try:
+        msal_app = msal.ConfidentialClientApplication(
+            CLIENT_ID,
+            authority=AUTHORITY,
+            client_credential=CLIENT_SECRET
+        )
+        auth_url = msal_app.get_authorization_request_url(
+            scopes=SCOPE,
+            redirect_uri=request.host_url.rstrip('/') + REDIRECT_PATH
+        )
+        return redirect(auth_url)
+    except Exception as e:
+        logging.warning(f"Login attempt failed: {e}")
+        return "Login failed"
+
+# -------------------
+# Callback Route
+# -------------------
+@bp.route(REDIRECT_PATH)
+def authorized():
+    try:
+        code = request.args.get('code')
+        if not code:
+            logging.warning("No code returned in redirect")
+            return "Login failed"
+
+        msal_app = msal.ConfidentialClientApplication(
+            CLIENT_ID,
+            authority=AUTHORITY,
+            client_credential=CLIENT_SECRET
+        )
+        result = msal_app.acquire_token_by_authorization_code(
+            code,
+            scopes=SCOPE,
+            redirect_uri=request.host_url.rstrip('/') + REDIRECT_PATH
+        )
+
+        if "access_token" in result:
+            session["user"] = result.get("id_token_claims")
+            logging.info(f"User {session['user'].get('preferred_username')} logged in successfully")
+            return redirect(url_for('views.home'))
+        else:
+            logging.warning("Access token not found in result")
+            return "Login failed"
+    except Exception as e:
+        logging.warning(f"Login failed: {e}")
+        return "Login failed"

@@ -1,46 +1,58 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<form action="" method="post" novalidate enctype="multipart/form-data">
-    {{ form.hidden_tag() }}
-    <div class="row">
-        <div class="col-sm-4">
-            <p>
-                {{ form.title.label }}<br>
-                {{ form.title(size=64) }}
-                {% for error in form.title.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-                {% endfor %}
-            </p>
-            <p>
-                {{ form.author.label }}<br>
-                {{ form.author(size=32) }}
-                {% for error in form.author.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-                {% endfor %}
-            </p>
-            <p>
-                {{ form.body.label }}<br>
-                {{ form.body(cols=70, rows=20) }}
-                {% for error in form.body.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-                {% endfor %}
-            </p>
-            <p>{{ form.submit() }}</p>
-        </div>
-        <div class="col-sm-4">
-            {% if form.image_path.data %}
-            <p><img src="{{ imageSource + form.image_path.data }}" width="250" height="250" /></p>
-            {% endif %}
-            <p>
-                {{ form.image_path.label }}<br>
-                {{ form.image_path }}
-                {% for error in form.image_path.errors %}
-                <span style="color: red;">{{ error.join(form.image_path.errors) }}</span>
-                {% endfor %}
-            </p>
-        </div>
+<div class="container mt-4">
+    <h1>{{ title }}</h1>
+
+    {% if post %}
+    <div class="card p-3 mb-4">
+        <p><strong>ID:</strong> {{ post.id }}</p>
+        <p><strong>Title:</strong> {{ post.title }}</p>
+        <p><strong>Author:</strong> {{ post.author }}</p>
+        <p><strong>Content:</strong></p>
+        <p>{{ post.body }}</p>
+        {% if post.image_path %}
+        <p><img src="{{ post.image_path }}" width="250"></p>
+        {% endif %}
     </div>
-</form>
+    {% endif %}
+
+    <form action="" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" name="title" class="form-control" value="{{ post.title if post }}">
+        </div>
+        <br>
+
+        <div class="form-group">
+            <label>Author</label>
+            <select name="user_id" class="form-control" required>
+                <option value="">-- Select Author --</option>
+                {% for user in users %}
+                    {% if post and post.user_id == user.id %}
+                        <option value="{{ user.id }}" selected>{{ user.username }}</option>
+                    {% else %}
+                        <option value="{{ user.id }}">{{ user.username }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <br>
+
+        <div class="form-group">
+            <label>Body</label>
+            <textarea name="body" rows="8" class="form-control">{{ post.body if post }}</textarea>
+        </div>
+        <br>
+
+        <div class="form-group">
+            <label>Upload Image</label>
+            <input type="file" name="image_path" class="form-control">
+        </div>
+        <br>
+
+        <button type="submit" class="btn btn-primary">Save Post</button>
+        <a href="/" class="btn btn-secondary">Back to Home</a>
+    </form>
+</div>
 {% endblock %}
