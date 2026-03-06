@@ -1,3 +1,9 @@
+'''
+SQL_SERVER = "cms-sql-server.database.windows.net"
+SQL_DATABASE = "cms"
+SQL_USER = "cmsadmin"
+SQL_PASSWORD = "Nandini@1"
+'''
 import os
 import logging
 import urllib
@@ -8,18 +14,28 @@ from sqlalchemy import create_engine, text
 import msal
 import config
 
+
+# -------------------------
+# Logging Configuration
+# -------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
-# Logging configuration
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Azure SQL Database configuration
-SQL_SERVER = "cms-sql-server.database.windows.net"
-SQL_DATABASE = "cms"
-SQL_USER = "cmsadmin"
-SQL_PASSWORD = "Nandini@1"
+# -------------------------
+# Azure SQL Database Config
+# -------------------------
+SQL_SERVER = config.SQL_SERVER
+SQL_DATABASE = config.SQL_DATABASE
+SQL_USER = config.SQL_USER
+SQL_PASSWORD = config.SQL_PASSWORD
+
 
 params = urllib.parse.quote_plus(
     f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -49,6 +65,7 @@ def _build_msal_app(cache=None, authority=None):
 
 @app.route("/login")
 def login():
+
     session["state"] = str(uuid.uuid4())
 
     auth_url = _build_msal_app().get_authorization_request_url(
@@ -60,6 +77,9 @@ def login():
     return redirect(auth_url)
 
 
+# -------------------------
+# Microsoft Login Callback
+# -------------------------
 @app.route(config.REDIRECT_PATH)
 def authorized():
 
@@ -83,8 +103,13 @@ def authorized():
 
             session["user"] = result.get("id_token_claims")
 
-            username = session["user"].get("preferred_username") or session["user"].get("name")
+            username = (
+                session["user"].get("preferred_username")
+                or session["user"].get("name")
+                or "admin"
+            )
 
+            # REQUIRED LOG
             logging.info(f"{username} logged in successfully")
 
             with engine.begin() as conn:
@@ -111,10 +136,18 @@ def authorized():
     return redirect(url_for("index"))
 
 
+# -------------------------
+# Logout
+# -------------------------
 @app.route("/logout")
 def logout():
+
+    user = session.get("user", {}).get("name", "User")
+
+    logging.info(f"{user} logged out")
+
     session.clear()
-    logging.info("User logged out")
+
     return redirect("/")
 
 
@@ -176,10 +209,10 @@ def new_post():
         user_id = request.form.get("user_id")
 
         image_path = None
-
         image_file = request.files.get("image_path")
 
         if image_file and image_file.filename != "":
+
             image_path = f"static/uploads/{image_file.filename}"
 
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
@@ -251,6 +284,7 @@ def post(id):
         image_file = request.files.get("image_path")
 
         if image_file and image_file.filename != "":
+
             image_path = f"static/uploads/{image_file.filename}"
 
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
