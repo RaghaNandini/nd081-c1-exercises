@@ -1,25 +1,32 @@
-"""
-This script runs the FlaskWebProject application using a development server.
-"""
-
-from os import environ
-from FlaskWebProject import app
-
+    
+from flask import Flask, jsonify
+from sqlalchemy import text
+from FlaskWebProject.db import engine
+import sys
+sys.path.append("..")
 import config
-from flask import Flask
 
 app = Flask(__name__)
-app.secret_key = config.SECRET_KEY  # use the secret key from config
 
-# Example to check variables
-print("SQL Server:", config.SQL_SERVER)
-print("Blob Container:", config.BLOB_CONTAINER)
-print("Client ID:", config.CLIENT_ID)
-
-if __name__ == '__main__':
-    HOST = environ.get('SERVER_HOST', 'localhost')
+@app.route('/')
+def home():
     try:
-        PORT = int(environ.get('SERVER_PORT', '5555'))
-    except ValueError:
-        PORT = 5555
-    app.run(HOST, PORT, ssl_context='adhoc')
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))  
+            return f"✅ DB connected successfully, query result: {result.scalar()}"
+    except Exception as e:
+        return f"❌ DB connection failed: {e}"
+
+@app.route('/users')
+def users():
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT * FROM users")) 
+            rows = result.fetchall()
+            users_list = [dict(row._mapping) for row in rows]
+            return jsonify(users_list)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+if __name__ == "__main__":
+    app.run(debug=True)
