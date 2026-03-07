@@ -1,9 +1,3 @@
-'''
-SQL_SERVER = "cms-sql-server.database.windows.net"
-SQL_DATABASE = "cms"
-SQL_USER = "cmsadmin"
-SQL_PASSWORD = "Nandini@1"
-'''
 import os
 import logging
 import urllib
@@ -12,6 +6,7 @@ import uuid
 from flask import Flask, jsonify, render_template, session, redirect, request, url_for
 from sqlalchemy import create_engine, text
 import msal
+from azure.storage.blob import BlobServiceClient
 import config
 
 
@@ -23,38 +18,47 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-
+# -------------------------
+# Flask App
+# -------------------------
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
 
 # -------------------------
-# Azure SQL Database Config
+# Azure SQL Database
 # -------------------------
-SQL_SERVER = config.SQL_SERVER
-SQL_DATABASE = config.SQL_DATABASE
-SQL_USER = config.SQL_USER
-SQL_PASSWORD = config.SQL_PASSWORD
-
-
 params = urllib.parse.quote_plus(
     f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-    f"SERVER={SQL_SERVER};"
-    f"DATABASE={SQL_DATABASE};"
-    f"UID={SQL_USER};"
-    f"PWD={SQL_PASSWORD};"
+    f"SERVER={config.SQL_SERVER};"
+    f"DATABASE={config.SQL_DATABASE};"
+    f"UID={config.SQL_USER_NAME};"
+    f"PWD={config.SQL_PASSWORD};"
     "Encrypt=yes;"
     "TrustServerCertificate=yes;"
     "Connection Timeout=30;"
 )
 
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}", echo=False)
+engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+
+
+# -------------------------
+# Azure Blob Storage
+# -------------------------
+blob_service_client = BlobServiceClient.from_connection_string(
+    config.BLOB_CONNECTION_STRING
+)
+
+blob_container_client = blob_service_client.get_container_client(
+    config.BLOB_CONTAINER
+)
 
 
 # -------------------------
 # MSAL Authentication
 # -------------------------
 def _build_msal_app(cache=None, authority=None):
+
     return msal.ConfidentialClientApplication(
         config.CLIENT_ID,
         authority=authority or config.AUTHORITY,
@@ -63,6 +67,9 @@ def _build_msal_app(cache=None, authority=None):
     )
 
 
+# -------------------------
+# LOGIN
+# -------------------------
 @app.route("/login")
 def login():
 
@@ -78,7 +85,7 @@ def login():
 
 
 # -------------------------
-# Microsoft Login Callback
+# Microsoft Callback
 # -------------------------
 @app.route(config.REDIRECT_PATH)
 def authorized():
@@ -88,8 +95,8 @@ def authorized():
         return redirect(url_for("index"))
 
     if "error" in request.args:
-        logging.warning("Login error: %s", request.args.get("error_description"))
-        return "Login error"
+        logging.warning("Login error")
+        return redirect(url_for("index"))
 
     if "code" in request.args:
 
@@ -109,26 +116,7 @@ def authorized():
                 or "admin"
             )
 
-            # REQUIRED LOG
             logging.info(f"{username} logged in successfully")
-
-            with engine.begin() as conn:
-
-                user_row = conn.execute(
-                    text("SELECT id FROM USERS WHERE username=:username"),
-                    {"username": username}
-                ).mappings().first()
-
-                if user_row:
-                    session["user_id"] = user_row["id"]
-                else:
-
-                    inserted_id = conn.execute(
-                        text("INSERT INTO USERS (username) OUTPUT INSERTED.id VALUES (:username)"),
-                        {"username": username}
-                    ).scalar()
-
-                    session["user_id"] = inserted_id
 
         else:
             logging.warning("Invalid login attempt")
@@ -137,7 +125,7 @@ def authorized():
 
 
 # -------------------------
-# Logout
+# LOGOUT
 # -------------------------
 @app.route("/logout")
 def logout():
@@ -152,48 +140,32 @@ def logout():
 
 
 # -------------------------
-# Home Page
+# HOME PAGE
 # -------------------------
 @app.route("/")
-@app.route("/index")
 def index():
 
-    with engine.connect() as conn:
+    try:
 
-        users_result = conn.execute(text("SELECT * FROM USERS")).mappings()
-        users = [dict(u) for u in users_result]
+        with engine.connect() as conn:
 
-        posts_result = conn.execute(text("SELECT * FROM POSTS")).mappings()
-        posts = [dict(p) for p in posts_result]
+            users_result = conn.execute(text("SELECT * FROM USERS")).mappings()
+            users = [dict(u) for u in users_result]
 
-    return render_template("index.html", users=users, posts=posts)
+            posts_result = conn.execute(text("SELECT * FROM POSTS")).mappings()
+            posts = [dict(p) for p in posts_result]
 
+        return render_template("index.html", users=users, posts=posts)
 
-# -------------------------
-# API Routes
-# -------------------------
-@app.route("/users")
-def get_users():
+    except Exception as e:
 
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT * FROM USERS"))
-        users = [dict(row) for row in result.mappings()]
+        logging.error(f"Database error: {e}")
 
-    return jsonify(users)
-
-
-@app.route("/posts")
-def get_posts():
-
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT * FROM POSTS"))
-        posts = [dict(row) for row in result.mappings()]
-
-    return jsonify(posts)
+        return f"Database error: {e}", 500
 
 
 # -------------------------
-# Create Post
+# CREATE POST
 # -------------------------
 @app.route("/new_post", methods=["GET", "POST"])
 def new_post():
@@ -208,19 +180,17 @@ def new_post():
         body = request.form.get("body")
         user_id = request.form.get("user_id")
 
-        image_path = None
         image_file = request.files.get("image_path")
+
+        image_url = None
 
         if image_file and image_file.filename != "":
 
-            image_path = f"static/uploads/{image_file.filename}"
+            blob_client = blob_container_client.get_blob_client(image_file.filename)
 
-            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            blob_client.upload_blob(image_file)
 
-            image_file.save(image_path)
-
-        if not user_id:
-            return "Error: Must select an author", 403
+            image_url = blob_client.url
 
         with engine.begin() as conn:
 
@@ -229,23 +199,24 @@ def new_post():
                 {"id": user_id}
             ).mappings().first()
 
-            author_name = user_row["username"] if user_row else "Unknown"
+            author_name = user_row["username"]
 
             conn.execute(
+
                 text(
                     "INSERT INTO POSTS (title, body, image_path, user_id, author) "
                     "VALUES (:title, :body, :image_path, :user_id, :author)"
                 ),
+
                 {
                     "title": title,
                     "body": body,
-                    "image_path": image_path,
+                    "image_path": image_url,
                     "user_id": user_id,
                     "author": author_name
                 }
-            )
 
-        logging.info(f"New post created: {title}")
+            )
 
         return redirect("/")
 
@@ -253,80 +224,7 @@ def new_post():
 
 
 # -------------------------
-# Edit Post
-# -------------------------
-@app.route("/post/<int:id>", methods=["GET", "POST"])
-def post(id):
-
-    with engine.connect() as conn:
-
-        post_data = conn.execute(
-            text("SELECT * FROM POSTS WHERE id=:id"),
-            {"id": id}
-        ).mappings().first()
-
-    if not post_data:
-        return "Post not found", 404
-
-    with engine.connect() as conn:
-
-        users_result = conn.execute(text("SELECT * FROM USERS")).mappings()
-        users = [dict(u) for u in users_result]
-
-    if request.method == "POST":
-
-        title = request.form.get("title")
-        body = request.form.get("body")
-        user_id = request.form.get("user_id")
-
-        image_path = post_data["image_path"]
-
-        image_file = request.files.get("image_path")
-
-        if image_file and image_file.filename != "":
-
-            image_path = f"static/uploads/{image_file.filename}"
-
-            os.makedirs(os.path.dirname(image_path), exist_ok=True)
-
-            image_file.save(image_path)
-
-        with engine.begin() as conn:
-
-            user_row = conn.execute(
-                text("SELECT username FROM USERS WHERE id=:id"),
-                {"id": user_id}
-            ).mappings().first()
-
-            author_name = user_row["username"] if user_row else "Unknown"
-
-            conn.execute(
-                text(
-                    "UPDATE POSTS SET title=:title, body=:body, image_path=:image_path, "
-                    "user_id=:user_id, author=:author WHERE id=:id"
-                ),
-                {
-                    "title": title,
-                    "body": body,
-                    "image_path": image_path,
-                    "user_id": user_id,
-                    "author": author_name,
-                    "id": id
-                }
-            )
-
-        logging.info(f"Post updated: {title}")
-
-        return redirect("/")
-
-    return render_template("post.html", title="Edit Post", post=post_data, users=users)
-
-
-# -------------------------
-# Run App
+# RUN
 # -------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
-'''
-if __name__ == "__main__":
-    app.run(debug=True)'''
+    app.run(host="0.0.0.0", port=8000, debug=True)
