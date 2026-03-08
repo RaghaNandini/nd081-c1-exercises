@@ -4,6 +4,8 @@ Flask-Login
 SQLAlchemy
 pyodbc
 azure-storage-blob
-gunicorn
 msal
+gunicorn
 python-dotenv
+Flask-WTF
+wtforms
