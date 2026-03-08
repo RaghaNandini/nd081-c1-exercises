@@ -31,6 +31,7 @@
 
 
 <!-- POSTS TABLE -->
+<!-- POSTS TABLE -->
 <h2 style="margin-top:40px;">Posts</h2>
 
 <table class="table table-striped">
@@ -40,7 +41,8 @@
             <th>ID</th>
             <th>Title</th>
             <th>Author</th>
-            <th>Image?</th>
+            <th>Body</th>
+            <th>Image</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -53,7 +55,15 @@
             <td>{{ post.id }}</td>
             <td>{{ post.title }}</td>
             <td>{{ post.author }}</td>
-            <td>{{ post.image_path }}</td>
+            <td>{{ post.body }}</td>
+
+            <td>
+                {% if post.image_path %}
+                    <img src="{{ post.image_path }}" width="120">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
 
             <td>
                 <a href="{{ url_for('post', id=post.id) }}" class="btn btn-primary btn-sm">
@@ -68,6 +78,7 @@
     </tbody>
 
 </table>
+
 
 
 <div class="row mt-3">
