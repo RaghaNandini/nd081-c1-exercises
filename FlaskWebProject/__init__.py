@@ -153,6 +153,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_session import Session
+from FlaskWebProject import config
 
 # Initialize DB and Login globally
 db = SQLAlchemy()
