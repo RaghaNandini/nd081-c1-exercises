@@ -7,7 +7,7 @@ from flask import Flask, jsonify, render_template, session, redirect, request, u
 from sqlalchemy import create_engine, text
 import msal
 from azure.storage.blob import BlobServiceClient
-import config
+from FlaskWebProject import config
 
 
 # -------------------------
