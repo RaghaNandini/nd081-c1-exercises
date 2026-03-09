@@ -43,7 +43,7 @@ def home():
 
 
 # -------------------------------
-# CREATE NEW POST PAGE
+# CREATE NEW POST
 # -------------------------------
 @bp.route("/new_post", methods=["GET", "POST"])
 def new_post():
@@ -55,29 +55,34 @@ def new_post():
 
         if request.method == "POST":
 
-            title = request.form.get("title")
-            user_id = request.form.get("user_id")
-            body = request.form.get("body")
+            title = request.form["title"]
+            user_id = int(request.form["user_id"])
+            body = request.form["body"]
 
-            # Get username from users table
-            user_query = text("SELECT username FROM users WHERE id=:id")
-            user = conn.execute(user_query, {"id": user_id}).fetchone()
+            # get username
+            user = conn.execute(
+                text("SELECT username FROM users WHERE id=:id"),
+                {"id": user_id}
+            ).fetchone()
 
             author = user.username if user else "Unknown"
 
-            # FIXED INSERT QUERY
-            insert_query = text("""
+            # default image
+            image_url = "https://picsum.photos/300"
+
+            conn.execute(
+                text("""
                 INSERT INTO posts (title, author, body, image_path, user_id)
                 VALUES (:title, :author, :body, :image_path, :user_id)
-            """)
-
-            conn.execute(insert_query, {
-                "title": title,
-                "author": author,
-                "body": body,
-                "image_path": "https://picsum.photos/300",
-                "user_id": user_id
-            })
+                """),
+                {
+                    "title": title,
+                    "author": author,
+                    "body": body,
+                    "image_path": image_url,
+                    "user_id": user_id
+                }
+            )
 
             conn.commit()
             conn.close()
