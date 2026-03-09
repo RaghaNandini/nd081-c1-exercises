@@ -14,7 +14,7 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = (
         f"mssql+pyodbc://{config.SQL_USER_NAME}:{config.SQL_PASSWORD}"
         f"@{config.SQL_SERVER}:1433/{config.SQL_DATABASE}"
-        "?driver=ODBC+Driver+17+for+SQL+Server"
+        "?driver=ODBC+Driver+18+for+SQL+Server"
     )
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
