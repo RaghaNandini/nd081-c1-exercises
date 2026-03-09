@@ -15,6 +15,7 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_PATH = "/getAToken"
 SCOPE = ["User.Read"]
 
+
 # -------------------------------
 # HOME PAGE
 # -------------------------------
@@ -40,6 +41,14 @@ def home():
         posts=posts,
         title="Article CMS"
     )
+
+
+# -------------------------------
+# CREATE NEW POST PAGE
+# -------------------------------
+@bp.route("/new_post")
+def new_post():
+    return "New Post Page"
 
 
 # -------------------------------
