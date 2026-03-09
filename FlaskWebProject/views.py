@@ -1,6 +1,4 @@
 
-<<<<<<< HEAD
-=======
 bp = Blueprint('views', __name__)
 
 CLIENT_ID = os.environ.get("CLIENT_ID")
