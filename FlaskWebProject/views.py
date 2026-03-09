@@ -1,3 +1,9 @@
+from flask import Blueprint, render_template, redirect, url_for, session, request
+import msal
+import logging
+import os
+from FlaskWebProject import db
+from sqlalchemy import text
 
 bp = Blueprint('views', __name__)
 
@@ -176,4 +182,3 @@ def logout():
     except Exception as e:
         logging.error(f"Logout error: {str(e)}")
         return redirect(url_for("views.home"))
->>>>>>> f91ab5b (Trigger new deployment)
