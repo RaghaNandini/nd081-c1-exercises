@@ -55,11 +55,11 @@ def new_post():
 
         if request.method == "POST":
 
-            title = request.form.get("title")
-            user_id = request.form.get("user_id")
-            body = request.form.get("body")
+            title = request.form["title"]
+            user_id = int(request.form["user_id"])
+            body = request.form["body"]
 
-            # get username from users table
+            # get username
             user = conn.execute(
                 text("SELECT username FROM users WHERE id=:id"),
                 {"id": user_id}
@@ -67,18 +67,20 @@ def new_post():
 
             author = user.username if user else "Unknown"
 
+            # default image
             image_url = "https://picsum.photos/300"
 
             conn.execute(
                 text("""
-                INSERT INTO posts (title, author, body, image_path)
-                VALUES (:title, :author, :body, :image_path)
+                INSERT INTO posts (title, author, body, image_path, user_id)
+                VALUES (:title, :author, :body, :image_path, :user_id)
                 """),
                 {
                     "title": title,
                     "author": author,
                     "body": body,
-                    "image_path": image_url
+                    "image_path": image_url,
+                    "user_id": user_id
                 }
             )
 
