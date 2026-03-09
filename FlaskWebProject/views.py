@@ -31,7 +31,6 @@ def home():
 
     except Exception as e:
         logging.error(f"Database connection error: {str(e)}")
-
         users = []
         posts = []
 
@@ -46,9 +45,55 @@ def home():
 # -------------------------------
 # CREATE NEW POST PAGE
 # -------------------------------
-@bp.route("/new_post")
+@bp.route("/new_post", methods=["GET", "POST"])
 def new_post():
-    return "New Post Page"
+
+    try:
+        conn = db.engine.connect()
+
+        users = conn.execute(text("SELECT * FROM users")).fetchall()
+
+        if request.method == "POST":
+
+            title = request.form.get("title")
+            user_id = request.form.get("user_id")
+            body = request.form.get("body")
+
+            # get username from users table
+            user_query = text("SELECT username FROM users WHERE id=:id")
+            user = conn.execute(user_query, {"id": user_id}).fetchone()
+
+            author = user.username if user else "Unknown"
+
+            insert_query = text("""
+                INSERT INTO posts (title, author, body, user_id)
+                VALUES (:title, :author, :body, :user_id)
+            """)
+
+            conn.execute(insert_query, {
+                "title": title,
+                "author": author,
+                "body": body,
+                "user_id": user_id
+            })
+
+            conn.commit()
+            conn.close()
+
+            return redirect(url_for("views.home"))
+
+        conn.close()
+
+        return render_template(
+            "post.html",
+            title="Create New Post",
+            post=None,
+            users=users
+        )
+
+    except Exception as e:
+        logging.error(f"Post creation error: {str(e)}")
+        return "Error creating post"
 
 
 # -------------------------------
@@ -104,7 +149,6 @@ def authorized():
         if "access_token" in result:
 
             user = result.get("id_token_claims")
-
             session["user"] = user
 
             logging.info(
