@@ -12,7 +12,7 @@ password = os.environ.get("SQL_PASSWORD")
 # Build connection string for Azure SQL
 params = urllib.parse.quote_plus(
     f"Driver={{ODBC Driver 18 for SQL Server}};"
-    f"Server=tcp:{server},1433;"
+    f"SERVER=tcp:{config.SQL_SERVER},1433;"
     f"Database={database};"
     f"Uid={username};"
     f"Pwd={password};"
