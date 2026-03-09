@@ -59,21 +59,23 @@ def new_post():
             user_id = request.form.get("user_id")
             body = request.form.get("body")
 
-            # get username from users table
+            # Get username from users table
             user_query = text("SELECT username FROM users WHERE id=:id")
             user = conn.execute(user_query, {"id": user_id}).fetchone()
 
             author = user.username if user else "Unknown"
 
+            # FIXED INSERT QUERY
             insert_query = text("""
-                INSERT INTO posts (title, author, body, user_id)
-                VALUES (:title, :author, :body, :user_id)
+                INSERT INTO posts (title, author, body, image_path, user_id)
+                VALUES (:title, :author, :body, :image_path, :user_id)
             """)
 
             conn.execute(insert_query, {
                 "title": title,
                 "author": author,
                 "body": body,
+                "image_path": "https://picsum.photos/300",
                 "user_id": user_id
             })
 
