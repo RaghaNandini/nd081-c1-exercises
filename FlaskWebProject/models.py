@@ -11,8 +11,4 @@ class Post(db.Model):
     title = db.Column(db.String(140))
     author = db.Column(db.String(140))
     body = db.Column(db.Text)
-
     image_path = db.Column(db.String(300))
-
-    image_path = db.Column(db.String(300))
-
