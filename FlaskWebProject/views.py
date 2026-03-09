@@ -1,7 +1,9 @@
-from flask import Blueprint, redirect, url_for, session, request
+from flask import Blueprint, render_template, redirect, url_for, session, request
 import msal
 import logging
 import os
+from FlaskWebProject import db
+from sqlalchemy import text
 
 bp = Blueprint('views', __name__)
 
@@ -10,62 +12,90 @@ CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 TENANT_ID = os.environ.get("TENANT_ID")
 
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_PATH = "/auth/callback"
+REDIRECT_PATH = "/getAToken"
 SCOPE = ["User.Read"]
 
-
+# -------------------------------
+# HOME PAGE
+# -------------------------------
 @bp.route("/")
 def home():
-    return "Flask server is running correctly"
+    conn = db.engine.connect()
+
+    users = conn.execute(text("SELECT * FROM users")).fetchall()
+    posts = conn.execute(text("SELECT * FROM posts")).fetchall()
+
+    return render_template(
+        "index.html",
+        users=users,
+        posts=posts,
+        title="Article CMS"
+    )
 
 
+# -------------------------------
+# LOGIN WITH MICROSOFT
+# -------------------------------
 @bp.route("/login")
 def login():
-    try:
-        msal_app = msal.ConfidentialClientApplication(
-            CLIENT_ID,
-            authority=AUTHORITY,
-            client_credential=CLIENT_SECRET
-        )
 
-        auth_url = msal_app.get_authorization_request_url(
-            scopes=SCOPE,
-            redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
-        )
+    msal_app = msal.ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET
+    )
 
-        return redirect(auth_url)
+    auth_url = msal_app.get_authorization_request_url(
+        scopes=SCOPE,
+        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+    )
 
-    except Exception as e:
-        logging.warning(f"Login attempt failed: {e}")
-        return "Login failed"
+    return redirect(auth_url)
 
 
+# -------------------------------
+# AUTH CALLBACK
+# -------------------------------
 @bp.route(REDIRECT_PATH)
 def authorized():
-    try:
-        code = request.args.get("code")
 
-        if not code:
-            return "Login failed"
+    code = request.args.get("code")
 
-        msal_app = msal.ConfidentialClientApplication(
-            CLIENT_ID,
-            authority=AUTHORITY,
-            client_credential=CLIENT_SECRET
-        )
-
-        result = msal_app.acquire_token_by_authorization_code(
-            code,
-            scopes=SCOPE,
-            redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
-        )
-
-        if "access_token" in result:
-            session["user"] = result.get("id_token_claims")
-            return redirect(url_for("views.home"))
-
+    if not code:
+        logging.warning("Invalid login attempt")
         return "Login failed"
 
-    except Exception as e:
-        logging.warning(f"Login failed: {e}")
+    msal_app = msal.ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET
+    )
+
+    result = msal_app.acquire_token_by_authorization_code(
+        code,
+        scopes=SCOPE,
+        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+    )
+
+    if "access_token" in result:
+
+        user = result.get("id_token_claims")
+
+        session["user"] = user
+
+        logging.info(f"{user.get('preferred_username')} logged in successfully")
+
+        return redirect(url_for("views.home"))
+
+    else:
+        logging.warning("Invalid login attempt")
         return "Login failed"
+
+
+# -------------------------------
+# LOGOUT
+# -------------------------------
+@bp.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("views.home"))
