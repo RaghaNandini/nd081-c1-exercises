@@ -184,5 +184,5 @@ def logout():
 
         return redirect(url_for("views.home"))
 
-        return redirect(url_for("views.home"))
+        
 
