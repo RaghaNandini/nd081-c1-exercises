@@ -181,8 +181,8 @@ def logout():
 
     except Exception as e:
         logging.error(f"Logout error: {str(e)}")
-<<<<<<< HEAD
+
         return redirect(url_for("views.home"))
-=======
+
         return redirect(url_for("views.home"))
->>>>>>> 77bb0f4 (Fixed merge conflict in views.py)
+
