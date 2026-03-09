@@ -181,8 +181,4 @@ def logout():
 
     except Exception as e:
         logging.error(f"Logout error: {str(e)}")
-
         return redirect(url_for("views.home"))
-
-        
-
