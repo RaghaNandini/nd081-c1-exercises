@@ -40,8 +40,4 @@ blob_service_client = BlobServiceClient.from_connection_string(
 
 blob_container_client = blob_service_client.get_container_client(
     config.BLOB_CONTAINER
-
 )
-
-)
-
