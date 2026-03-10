@@ -69,14 +69,15 @@ def new_post():
 
             conn.execute(
                 text("""
-                INSERT INTO posts (title, author, body, image_path)
-                VALUES (:title, :author, :body, :image_path)
+                INSERT INTO posts (title, author, body, image_path, user_id)
+                VALUES (:title, :author, :body, :image_path, :user_id)
                 """),
                 {
-                    "title": title,
-                    "author": author,
-                    "body": body,
-                    "image_path": image_url
+                     "title": title,
+                     "author": author,
+                     "body": body,
+                     "image_path": image_url,
+                     "user_id": user_id
                 }
             )
 
