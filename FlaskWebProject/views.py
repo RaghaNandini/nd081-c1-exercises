@@ -122,7 +122,7 @@ def login():
 
         auth_url = msal_app.get_authorization_request_url(
             scopes=SCOPE,
-            redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+            redirect_uri="https://" + request.host.split(":")[0] + REDIRECT_PATH
         )
 
         return redirect(auth_url)
@@ -155,7 +155,7 @@ def authorized():
         result = msal_app.acquire_token_by_authorization_code(
             code,
             scopes=SCOPE,
-            redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+            redirect_uri="https://" + request.host.split(":")[0] + REDIRECT_PATH
         )
 
         if "access_token" in result:
