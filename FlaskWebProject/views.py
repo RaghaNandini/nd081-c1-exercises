@@ -21,13 +21,17 @@ SCOPE = ["User.Read"]
 # -------------------------------
 @bp.route("/")
 def home():
+
     try:
-        conn = db.engine.connect()
+        with db.engine.connect() as conn:
 
-        users = conn.execute(text("SELECT * FROM users")).fetchall()
-        posts = conn.execute(text("SELECT * FROM posts")).fetchall()
+            users = conn.execute(
+                text("SELECT * FROM users")
+            ).fetchall()
 
-        conn.close()
+            posts = conn.execute(
+                text("SELECT * FROM posts ORDER BY timestamp DESC")
+            ).fetchall()
 
     except Exception as e:
         logging.error(f"Database connection error: {str(e)}")
@@ -49,44 +53,46 @@ def home():
 def new_post():
 
     try:
-        conn = db.engine.connect()
-        users = conn.execute(text("SELECT * FROM users")).fetchall()
+        with db.engine.connect() as conn:
 
-        if request.method == "POST":
+            users = conn.execute(
+                text("SELECT * FROM users")
+            ).fetchall()
 
-            title = request.form.get("title")
-            user_id = request.form.get("user_id")
-            body = request.form.get("body")
+            if request.method == "POST":
 
-            user = conn.execute(
-                text("SELECT username FROM users WHERE id=:id"),
-                {"id": user_id}
-            ).fetchone()
+                title = request.form.get("title")
+                user_id = request.form.get("user_id")
+                body = request.form.get("body")
 
-            author = user.username if user else "Unknown"
+                user = conn.execute(
+                    text("SELECT username FROM users WHERE id=:id"),
+                    {"id": user_id}
+                ).fetchone()
 
-            image_url = "https://picsum.photos/300"
+                author = user.username if user else "Unknown"
 
-            conn.execute(
-                text("""
-                INSERT INTO posts (title, author, body, image_path, user_id)
-                VALUES (:title, :author, :body, :image_path, :user_id)
-                """),
-                {
-                     "title": title,
-                     "author": author,
-                     "body": body,
-                     "image_path": image_url,
-                     "user_id": user_id
-                }
-            )
+                image_url = "https://picsum.photos/300"
 
-            conn.commit()
-            conn.close()
+                conn.execute(
+                    text("""
+                    INSERT INTO posts
+                    (title, author, body, image_path, user_id, timestamp)
+                    VALUES
+                    (:title, :author, :body, :image_path, :user_id, GETDATE())
+                    """),
+                    {
+                        "title": title,
+                        "author": author,
+                        "body": body,
+                        "image_path": image_url,
+                        "user_id": user_id
+                    }
+                )
 
-            return redirect(url_for("views.home"))
+                conn.commit()
 
-        conn.close()
+                return redirect(url_for("views.home"))
 
         return render_template(
             "post.html",
@@ -97,7 +103,7 @@ def new_post():
 
     except Exception as e:
         logging.error(f"Post creation error: {str(e)}")
-        return "Error creating post"
+        return str(e)
 
 
 # -------------------------------
@@ -107,6 +113,7 @@ def new_post():
 def login():
 
     try:
+
         msal_app = msal.ConfidentialClientApplication(
             CLIENT_ID,
             authority=AUTHORITY,
@@ -132,6 +139,7 @@ def login():
 def authorized():
 
     try:
+
         code = request.args.get("code")
 
         if not code:
@@ -177,9 +185,13 @@ def authorized():
 def logout():
 
     try:
+
         session.clear()
+
         return redirect(url_for("views.home"))
 
     except Exception as e:
+
         logging.error(f"Logout error: {str(e)}")
+
         return redirect(url_for("views.home"))
