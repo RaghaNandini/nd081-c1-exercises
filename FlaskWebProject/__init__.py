@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from . import config
+import urllib
 
 db = SQLAlchemy()
 
@@ -10,11 +11,18 @@ def create_app():
 
     app.config["SECRET_KEY"] = config.SECRET_KEY
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = (
-        f"mssql+pyodbc://{config.SQL_USER_NAME}:{config.SQL_PASSWORD}"
-        f"@{config.SQL_SERVER}:1433/{config.SQL_DATABASE}"
-        "?driver=ODBC+Driver+18+for+SQL+Server"
+    params = urllib.parse.quote_plus(
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"SERVER={config.SQL_SERVER};"
+        f"DATABASE={config.SQL_DATABASE};"
+        f"UID={config.SQL_USER_NAME};"
+        f"PWD={config.SQL_PASSWORD};"
+        "Encrypt=yes;"
+        "TrustServerCertificate=yes;"
+        "Connection Timeout=30;"
     )
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"mssql+pyodbc:///?odbc_connect={params}"
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
