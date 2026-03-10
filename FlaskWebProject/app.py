@@ -4,17 +4,11 @@ from sqlalchemy import create_engine
 from azure.storage.blob import BlobServiceClient
 from FlaskWebProject import config
 
-# -------------------------
-# Logging
-# -------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# -------------------------
-# Azure SQL Database
-# -------------------------
 params = urllib.parse.quote_plus(
     f"DRIVER={{ODBC Driver 18 for SQL Server}};"
     f"SERVER={config.SQL_SERVER};"
@@ -31,9 +25,6 @@ engine = create_engine(
     pool_pre_ping=True
 )
 
-# -------------------------
-# Azure Blob Storage
-# -------------------------
 blob_service_client = BlobServiceClient.from_connection_string(
     config.BLOB_CONNECTION_STRING
 )
