@@ -22,8 +22,6 @@ params = urllib.parse.quote_plus(
 )
 
 # Create SQLAlchemy engine
-<<<<<<< HEAD
+
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
-=======
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
->>>>>>> f5f8fba (Fix Azure SQL connection)
+
