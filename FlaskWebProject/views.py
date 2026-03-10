@@ -120,9 +120,11 @@ def login():
             client_credential=CLIENT_SECRET
         )
 
+        redirect_uri = "https://" + request.host.split(":")[0] + REDIRECT_PATH
+
         auth_url = msal_app.get_authorization_request_url(
             scopes=SCOPE,
-            redirect_uri="https://" + request.host.split(":")[0] + REDIRECT_PATH
+            redirect_uri=redirect_uri
         )
 
         return redirect(auth_url)
@@ -144,7 +146,7 @@ def authorized():
 
         if not code:
             logging.warning("Invalid login attempt")
-            return "Login failed"
+            return redirect(url_for("views.home"))
 
         msal_app = msal.ConfidentialClientApplication(
             CLIENT_ID,
@@ -152,10 +154,12 @@ def authorized():
             client_credential=CLIENT_SECRET
         )
 
+        redirect_uri = "https://" + request.host.split(":")[0] + REDIRECT_PATH
+
         result = msal_app.acquire_token_by_authorization_code(
             code,
             scopes=SCOPE,
-            redirect_uri="https://" + request.host.split(":")[0] + REDIRECT_PATH
+            redirect_uri=redirect_uri
         )
 
         if "access_token" in result:
@@ -171,11 +175,11 @@ def authorized():
 
         else:
             logging.warning("Invalid login attempt")
-            return "Login failed"
+            return redirect(url_for("views.home"))
 
     except Exception as e:
         logging.error(f"Login error: {str(e)}")
-        return "Login failed"
+        return redirect(url_for("views.home"))
 
 
 # -------------------------------
